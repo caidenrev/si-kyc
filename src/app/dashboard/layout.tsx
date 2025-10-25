@@ -9,7 +9,6 @@ import {
   ArrowRightLeft,
   Search,
   LogOut,
-  ChevronDown,
   Menu,
 } from "lucide-react";
 import { getAuth, signOut } from "firebase/auth";
@@ -33,7 +32,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/logo";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { Toaster } from "@/components/ui/toaster";
 import { useUser } from "@/firebase";
 import React from "react";
 
@@ -44,12 +42,32 @@ const navItems = [
   { href: "/dashboard/transactions", icon: ArrowRightLeft, label: "Transaksi" },
 ];
 
+function SidebarNav() {
+    const pathname = usePathname();
+    return (
+        <nav className="flex flex-col items-start gap-2 px-2 text-sm font-medium lg:px-4">
+            {navItems.map((item) => (
+                <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                        (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard')) && "bg-muted text-primary"
+                    )}
+                >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                </Link>
+            ))}
+        </nav>
+    );
+}
+
 function Header() {
   const { user } = useUser();
   const router = useRouter();
   const auth = getAuth();
-  const pathname = usePathname();
-
+  
   const handleLogout = () => {
     signOut(auth).then(() => {
       router.push('/login');
@@ -62,7 +80,7 @@ function Header() {
   const userDisplayName = user?.displayName || user?.email;
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 print-hidden">
+    <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 print-hidden">
         <Sheet>
             <SheetTrigger asChild>
                 <Button size="icon" variant="outline" className="sm:hidden">
@@ -70,38 +88,30 @@ function Header() {
                     <span className="sr-only">Buka Menu</span>
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="sm:max-w-xs">
+            <SheetContent side="left" className="flex flex-col">
                 <SheetTitle className="sr-only">Menu</SheetTitle>
-                <nav className="grid gap-6 text-lg font-medium">
-                    <Logo className="mb-4" />
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={cn(
-                                "flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground",
-                                (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard')) && "text-foreground"
-                            )}
-                        >
-                            <item.icon className="h-5 w-5" />
-                            {item.label}
-                        </Link>
-                    ))}
-                </nav>
+                <div className="mb-4">
+                    <Logo />
+                </div>
+                <SidebarNav />
             </SheetContent>
         </Sheet>
-      <div className="relative ml-auto flex-1 md:grow-0">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Cari..."
-          className="w-full rounded-lg bg-secondary pl-8 md:w-[200px] lg:w-[320px]"
-        />
+      <div className="w-full flex-1">
+         <form>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Cari produk..."
+                className="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
+              />
+            </div>
+          </form>
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            variant="secondary"
             size="icon"
             className="overflow-hidden rounded-full"
           >
@@ -136,7 +146,6 @@ function Header() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const pathname = usePathname();
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -153,11 +162,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-          <Header />
-          <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 print-p-0">
-            {children}
-          </main>
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <div className="hidden border-r bg-muted/40 md:block">
+        <div className="flex h-full max-h-screen flex-col gap-2">
+          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+            <Logo />
+          </div>
+          <div className="flex-1">
+            <SidebarNav />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <Header />
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 print-p-0">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
