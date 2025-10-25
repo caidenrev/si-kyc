@@ -10,6 +10,7 @@ import {
   Search,
   LogOut,
   Menu,
+  User,
 } from "lucide-react";
 import { getAuth, signOut } from "firebase/auth";
 
@@ -31,9 +32,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/logo";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useUser } from "@/firebase";
 import React from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 
 const navItems = [
@@ -76,7 +77,7 @@ function Header() {
     });
   };
 
-  const userAvatar = user?.photoURL || PlaceHolderImages.find(img => img.id === 'user-avatar-1')?.imageUrl;
+  const userAvatar = user?.photoURL;
   const userDisplayName = user?.displayName || user?.email;
 
   return (
@@ -115,15 +116,10 @@ function Header() {
             size="icon"
             className="overflow-hidden rounded-full"
           >
-            {userAvatar && (
-              <Image
-                src={userAvatar}
-                width={40}
-                height={40}
-                alt="User avatar"
-                className="overflow-hidden rounded-full"
-              />
-            )}
+            <Avatar>
+                <AvatarImage src={userAvatar || ''} alt="User avatar" />
+                <AvatarFallback><User/></AvatarFallback>
+            </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

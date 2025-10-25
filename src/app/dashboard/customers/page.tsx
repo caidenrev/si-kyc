@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { PlusCircle, Search, MoreHorizontal } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, User } from "lucide-react";
 import { collection, deleteDoc, doc } from "firebase/firestore";
 
 import { PageHeader } from "@/components/page-header";
@@ -34,6 +34,8 @@ import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 
 export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -114,13 +116,10 @@ export default function CustomersPage() {
               {!isLoading && filteredCustomers.map((customer) => (
                 <TableRow key={customer.id}>
                   <TableCell className="hidden sm:table-cell">
-                    <Image
-                      alt="Customer avatar"
-                      className="aspect-square rounded-full object-cover"
-                      height="40"
-                      src={customer.avatarUrl || 'https://picsum.photos/seed/placeholder/40/40'}
-                      width="40"
-                    />
+                    <Avatar>
+                      <AvatarImage src={customer.avatarUrl} alt="Customer avatar" />
+                      <AvatarFallback><User className="h-5 w-5"/></AvatarFallback>
+                    </Avatar>
                   </TableCell>
                   <TableCell className="font-medium">{customer.fullName}</TableCell>
                   <TableCell>{customer.nik}</TableCell>

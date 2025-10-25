@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, FileDown, MoreVertical } from "lucide-react";
+import { ArrowLeft, FileDown, MoreVertical, User } from "lucide-react";
 import React, { useMemo } from 'react';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const PrintButton = () => (
     <Button onClick={() => window.print()}>
@@ -37,8 +38,8 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const [clientTransactions, setClientTransactions] = React.useState<any[]>([]);
   const firestore = useFirestore();
 
-  const customerRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
-  const { data: customer, isLoading: isCustomerLoading } = useDoc(customerRef ? customerRef.doc(params.id) : null);
+  const customerRef = useMemoFirebase(() => firestore ? doc(firestore, 'customers', params.id) : null, [firestore, params.id]);
+  const { data: customer, isLoading: isCustomerLoading } = useDoc(customerRef);
   
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -55,7 +56,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     }
     if(transactions) {
       setClientTransactions(transactions.map(tx => {
-        const txDate = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date);
+        const txDate = tx.transactionDate?.toDate ? tx.transactionDate.toDate() : new Date(tx.transactionDate);
         return {
           ...tx,
           formattedDate: txDate.toLocaleDateString('id-ID'),
@@ -176,13 +177,12 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               <CardTitle>Profil Pelanggan</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center">
-              <Image
-                alt="Avatar Pelanggan"
-                className="aspect-square w-32 rounded-full object-cover mb-4"
-                height="128"
-                src={customer.avatarUrl || "https://picsum.photos/seed/placeholder/128/128"}
-                width="128"
-              />
+              <Avatar className="h-32 w-32 mb-4">
+                <AvatarImage src={customer.avatarUrl} alt="Avatar Pelanggan" />
+                <AvatarFallback>
+                  <User className="h-16 w-16" />
+                </AvatarFallback>
+              </Avatar>
               <p className="text-center font-semibold">{customer.fullName}</p>
               <p className="text-center text-sm text-muted-foreground">{customer.address}</p>
             </CardContent>

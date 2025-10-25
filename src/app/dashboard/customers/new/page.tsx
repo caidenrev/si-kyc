@@ -52,7 +52,7 @@ export default function NewCustomerPage() {
       await addDocumentNonBlocking(customersRef, {
         ...values,
         joinDate: serverTimestamp(),
-        avatarUrl: `https://picsum.photos/seed/${Math.random()}/40/40`, // Placeholder avatar
+        avatarUrl: "", // Set to empty string, UI will handle fallback
       });
 
       toast({
