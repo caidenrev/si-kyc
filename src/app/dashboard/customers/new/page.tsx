@@ -85,7 +85,7 @@ export default function NewCustomerPage() {
           Tambah Pelanggan Baru
         </h1>
       </div>
-      <Card className="max-w-2xl mx-auto shadow-lg shadow-primary/5">
+      <Card className="shadow-lg shadow-primary/5">
         <CardHeader>
           <CardTitle>Formulir Data Pelanggan</CardTitle>
           <CardDescription>
