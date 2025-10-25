@@ -9,12 +9,17 @@ import {
   ArrowRightLeft,
   Search,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Menu,
 } from "lucide-react";
 import { getAuth, signOut } from "firebase/auth";
 
 import { cn } from "@/lib/utils";
-import { useSidebar, SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,42 +43,11 @@ const navItems = [
   { href: "/dashboard/transactions", icon: ArrowRightLeft, label: "Transaksi" },
 ];
 
-function MainSidebar() {
-  const pathname = usePathname()
-  const { state: sidebarState } = useSidebar()
-  const isCollapsed = sidebarState === 'collapsed'
-
-  return (
-    <Sidebar className="print-hidden">
-      <SidebarHeader>
-        <Logo isCollapsed={isCollapsed} />
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarMenu>
-          {navItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard')}
-                tooltip={{ children: item.label }}
-              >
-                <Link href={item.href}>
-                  <item.icon />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarContent>
-    </Sidebar>
-  );
-}
-
 function Header() {
   const { user } = useUser();
   const router = useRouter();
   const auth = getAuth();
+  const pathname = usePathname();
 
   const handleLogout = () => {
     signOut(auth).then(() => {
@@ -88,7 +62,32 @@ function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 print-hidden">
-      <SidebarTrigger className="sm:hidden" />
+        <Sheet>
+            <SheetTrigger asChild>
+                <Button size="icon" variant="outline" className="sm:hidden">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Buka Menu</span>
+                </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="sm:max-w-xs">
+                <nav className="grid gap-6 text-lg font-medium">
+                    <Logo className="mb-4" />
+                    {navItems.map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={cn(
+                                "flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground",
+                                (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard')) && "text-foreground"
+                            )}
+                        >
+                            <item.icon className="h-5 w-5" />
+                            {item.label}
+                        </Link>
+                    ))}
+                </nav>
+            </SheetContent>
+        </Sheet>
       <div className="relative ml-auto flex-1 md:grow-0">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
@@ -135,6 +134,7 @@ function Header() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const pathname = usePathname();
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -151,18 +151,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full flex-col">
-        <MainSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+    <div className="flex min-h-screen w-full">
+        <nav className="hidden border-r bg-muted/40 md:block print-hidden">
+            <div className="flex h-full max-h-screen flex-col gap-2">
+                <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+                    <Logo />
+                </div>
+                <div className="flex-1">
+                    <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                                    (pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard')) && "bg-muted text-primary"
+                                )}
+                            >
+                                <item.icon className="h-4 w-4" />
+                                {item.label}
+                            </Link>
+                        ))}
+                    </nav>
+                </div>
+            </div>
+        </nav>
+        <div className="flex flex-1 flex-col">
           <Header />
-          <SidebarInset>
-            <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 print-p-0">
-              {children}
-            </main>
-          </SidebarInset>
+          <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 print-p-0">
+            {children}
+          </main>
         </div>
       </div>
-    </SidebarProvider>
   )
 }
