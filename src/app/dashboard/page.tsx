@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   Bar,
   BarChart,
@@ -30,14 +31,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { customers, transactions } from "@/lib/data";
 
-const chartData = [
-  { name: "Sen", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Sel", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Rab", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Kam", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Jum", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Sab", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Min", total: Math.floor(Math.random() * 5000) + 1000 },
+const initialChartData = [
+  { name: "Sen", total: 0 },
+  { name: "Sel", total: 0 },
+  { name: "Rab", total: 0 },
+  { name: "Kam", total: 0 },
+  { name: "Jum", total: 0 },
+  { name: "Sab", total: 0 },
+  { name: "Min", total: 0 },
 ];
 
 const recentTransactions = transactions.slice(0, 5).map(tx => {
@@ -46,6 +47,21 @@ const recentTransactions = transactions.slice(0, 5).map(tx => {
 });
 
 export default function Dashboard() {
+  const [chartData, setChartData] = React.useState(initialChartData);
+
+  React.useEffect(() => {
+    const data = [
+      { name: "Sen", total: Math.floor(Math.random() * 5000) + 1000 },
+      { name: "Sel", total: Math.floor(Math.random() * 5000) + 1000 },
+      { name: "Rab", total: Math.floor(Math.random() * 5000) + 1000 },
+      { name: "Kam", total: Math.floor(Math.random() * 5000) + 1000 },
+      { name: "Jum", total: Math.floor(Math.random() * 5000) + 1000 },
+      { name: "Sab", total: Math.floor(Math.random() * 5000) + 1000 },
+      { name: "Min", total: Math.floor(Math.random() * 5000) + 1000 },
+    ];
+    setChartData(data);
+  }, []);
+
   return (
     <>
       <PageHeader

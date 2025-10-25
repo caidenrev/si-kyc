@@ -37,6 +37,15 @@ const transactionsWithCustomer = allTransactions.map(tx => {
 });
 
 export default function TransactionsPage() {
+  const [clientTransactions, setClientTransactions] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    setClientTransactions(transactionsWithCustomer.map(tx => ({
+      ...tx,
+      formattedDate: new Date(tx.date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+    })))
+  }, []);
+
   return (
     <>
       <PageHeader
@@ -85,7 +94,7 @@ export default function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactionsWithCustomer.map((tx) => (
+              {clientTransactions.map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell>
                     <div className="font-medium">{tx.customerName}</div>
@@ -97,7 +106,7 @@ export default function TransactionsPage() {
                     <Badge variant={tx.type === 'Deposit' ? 'default' : tx.type === 'Withdrawal' ? 'destructive' : 'secondary'}>{tx.type}</Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {new Date(tx.date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                    {tx.formattedDate}
                   </TableCell>
                   <TableCell className="text-right">
                     {new Intl.NumberFormat('id-ID', {

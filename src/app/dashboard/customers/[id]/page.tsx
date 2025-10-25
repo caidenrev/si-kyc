@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, FileDown, MoreVertical } from "lucide-react";
+import React from 'react';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,8 +32,22 @@ const PrintButton = () => (
 );
 
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
+  const [formattedJoinDate, setFormattedJoinDate] = React.useState('');
+  const [clientTransactions, setClientTransactions] = React.useState<any[]>([]);
+
   const customer = customers.find((c) => c.id === params.id);
   const transactions = allTransactions.filter((t) => t.customerId === params.id);
+
+  React.useEffect(() => {
+    if (customer) {
+      setFormattedJoinDate(new Date(customer.joinDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }));
+    }
+    setClientTransactions(transactions.map(tx => ({
+      ...tx,
+      formattedDate: new Date(tx.date).toLocaleDateString('id-ID'),
+    })));
+  }, [customer, transactions]);
+
 
   if (!customer) {
     return (
@@ -93,7 +108,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                         </div>
                         <div className="flex items-center justify-between">
                             <dt className="text-muted-foreground">Bergabung</dt>
-                            <dd>{new Date(customer.joinDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</dd>
+                            <dd>{formattedJoinDate}</dd>
                         </div>
                     </dl>
                 </div>
@@ -116,9 +131,9 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transactions.map((tx) => (
+                  {clientTransactions.map((tx) => (
                     <TableRow key={tx.id}>
-                      <TableCell>{new Date(tx.date).toLocaleDateString('id-ID')}</TableCell>
+                      <TableCell>{tx.formattedDate}</TableCell>
                       <TableCell>
                         <Badge variant={tx.type === 'Deposit' ? 'default' : tx.type === 'Withdrawal' ? 'destructive' : 'secondary'}>{tx.type}</Badge>
                       </TableCell>
