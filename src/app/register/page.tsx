@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
@@ -26,17 +26,21 @@ export default function LoginPage() {
       <Card className="mx-auto w-full max-w-sm shadow-2xl shadow-primary/10">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
-             <Logo className="text-3xl text-foreground"/>
+            <Logo className="text-3xl text-foreground" />
           </div>
-          <CardTitle className="text-2xl font-bold">Selamat Datang</CardTitle>
+          <CardTitle className="text-2xl font-bold">Buat Akun Baru</CardTitle>
           <CardDescription>
-            Masuk ke akun Si-KYC Anda untuk melanjutkan
+            Isi form di bawah untuk mendaftar
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isClient ? (
             <div className="w-full">
               <form className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="full-name">Nama Lengkap</Label>
+                  <Input id="full-name" placeholder="Budi Santoso" required />
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -47,28 +51,20 @@ export default function LoginPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <div className="flex items-center">
-                    <Label htmlFor="password">Password</Label>
-                    <Link
-                      href="#"
-                      className="ml-auto inline-block text-sm underline"
-                    >
-                      Lupa password?
-                    </Link>
-                  </div>
+                  <Label htmlFor="password">Password</Label>
                   <Input id="password" type="password" required />
                 </div>
-                <Button type="submit" className="w-full" asChild>
-                  <Link href="/dashboard">Login</Link>
+                <Button type="submit" className="w-full">
+                  Buat Akun
                 </Button>
                 <Button variant="outline" className="w-full">
-                  Login dengan Google
+                  Daftar dengan Google
                 </Button>
               </form>
               <div className="mt-4 text-center text-sm">
-                Belum punya akun?{" "}
-                <Link href="/register" className="underline">
-                  Daftar
+                Sudah punya akun?{" "}
+                <Link href="/login" className="underline">
+                  Login
                 </Link>
               </div>
             </div>
