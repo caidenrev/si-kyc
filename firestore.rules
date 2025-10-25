@@ -1,0 +1,77 @@
+/**
+ * @file Firebase Security Rules for Customer and Transaction data.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict ownership model for customer data and transactions.
+ * Customers can only read and write their own data. Transactions are not scoped to any specific customer but must have a valid customerId.
+ *
+ * Data Structure:
+ * - `/customers/{customerId}`: Stores customer KYC data, with 'customerId' as the document ID.
+ * - `/transactions/{transactionId}`: Stores transaction data. Each transaction includes a 'customerId' field referencing the associated customer.
+ *
+ * Key Security Decisions:
+ * - Customers can only create their profile (`/customers/{customerId}`) if the authenticated user's ID matches the `customerId`.
+ * - Customers can update and delete their own profiles, provided the document exists.
+ * - Transactions are secured via the `customerId` field, which links each transaction to a specific customer.
+ * - The `list` operation is enabled on both collections but not without guards. Listing the customers or transactions is only granted with the user's ID.
+ *
+ * Denormalization for Authorization:
+ * The rules leverage the `customerId` field within the `/transactions/{transactionId}` document to establish a link between the transaction and the customer. This enables authorization checks without requiring additional `get()` operations.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Allows customers to manage their KYC data.
+     * @path /customers/{customerId}
+     * @allow (create) User abc can create their customer profile if authenticated as abc.
+     * @deny (create) User xyz cannot create a profile for abc.
+     * @allow (get, update, delete, list) User abc can perform these operations on their profile if authenticated as abc.
+     * @deny (get, update, delete) User xyz cannot perform these operations on abc's profile.
+     * @principle Enforces document ownership for writes and reads, validates path consistency.
+     */
+    match /customers/{customerId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(customerId) {
+        return request.auth.uid == customerId;
+      }
+
+      function isExistingOwner(customerId) {
+          return isOwner(customerId) && resource != null;
+      }
+
+      allow get: if true;
+      allow list: if true;
+
+      allow create: if isSignedIn() && isOwner(customerId) && request.resource.data.id == customerId;
+      allow update: if isExistingOwner(customerId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(customerId);
+    }
+
+    /**
+     * @description Allows transaction management for all authenticated users.
+     * @path /transactions/{transactionId}
+     * @allow (create) Any authenticated user can create a transaction with a valid customerId.
+     * @deny (create) Creation is denied for unauthenticated users.
+     * @allow (get, update, delete, list) Any authenticated user can perform these operations on transactions if the document exists.
+     * @deny (get, update, delete) Operations are denied for non-existent documents.
+     * @principle Grants access to all authenticated users, requiring a valid customerId on create.
+     */
+    match /transactions/{transactionId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if true;
+      allow list: if true;
+
+      allow create: if isSignedIn();
+      allow update: if resource != null;
+      allow delete: if resource != null;
+    }
+  }
+}

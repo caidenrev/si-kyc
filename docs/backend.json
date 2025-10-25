@@ -1,0 +1,133 @@
+{
+  "entities": {
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer with KYC (Know Your Customer) data.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Customer entity."
+        },
+        "nik": {
+          "type": "string",
+          "description": "National Identity Card (NIK) number of the customer."
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Full name of the customer."
+        },
+        "address": {
+          "type": "string",
+          "description": "Address of the customer."
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "description": "Date of birth of the customer.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "nik",
+        "fullName",
+        "address"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a transaction made by a customer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Transaction entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Transaction)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of transaction (e.g., deposit, withdrawal)."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the transaction."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency of the transaction."
+        },
+        "source": {
+          "type": "string",
+          "description": "Source of funds for the transaction."
+        },
+        "destination": {
+          "type": "string",
+          "description": "Destination of funds for the transaction."
+        },
+        "transactionDate": {
+          "type": "string",
+          "description": "Date and time of the transaction.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "type",
+        "amount",
+        "currency",
+        "source",
+        "destination",
+        "transactionDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer KYC data.  Each customer document is uniquely identified by 'customerId'.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "Unique identifier for the customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores transaction data. The `customerId` field represents the customer associated with this transaction. Each transaction document is uniquely identified by `transactionId`.",
+          "params": [
+            {
+              "name": "transactionId",
+              "description": "Unique identifier for the transaction."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage customer KYC data and transactions in a secure and scalable manner. It leverages path-based ownership for customer data and transactions, ensuring clear ownership and simplified security rules. The structure avoids hierarchical authorization dependencies by storing customer data directly under the `customers` collection and transaction data directly under `transactions` collection. This approach ensures authorization independence, which means that reading and writing to a transaction does not require reading from the parent customer document to validate. This is important for maintaining atomicity in transactions and batches.  Furthermore, using dedicated collections (`customers`, `transactions`) provides a homogeneous security posture, making it easier to apply consistent security rules across all documents within those collections. The QAPs are supported through path-based ownership (`customers/{customerId}`) and predictable schema for transactions, enabling secure `list` operations filtered by `customerId`. Denormalization is not explicitly required in this design, but if future requirements introduce collaborative aspects or complex ownership models, consider denormalizing authorization data (e.g., customer members) into related documents to maintain authorization independence."
+  }
+}
