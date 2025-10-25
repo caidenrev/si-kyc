@@ -51,9 +51,10 @@ export default function RegisterPage() {
   }, [user, isUserLoading, router]);
 
   async function onSubmit(values: z.infer<typeof registerSchema>) {
+    if (!auth) return;
     try {
       // We don't need to await this. The onAuthStateChanged listener will handle the redirect.
-      initiateEmailSignUp(auth, values.email, values.password);
+      initiateEmailSignUp(auth, values.email, values.password, values.fullName);
       toast({
         title: "Pendaftaran Berhasil!",
         description: "Akun Anda telah dibuat. Anda akan diarahkan ke dashboard.",
