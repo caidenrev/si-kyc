@@ -3,13 +3,12 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PlusCircle, ListFilter } from 'lucide-react';
+import { collection, query, orderBy } from 'firebase/firestore';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Table,
@@ -29,22 +28,50 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/page-header';
-import { transactions as allTransactions, customers } from '@/lib/data';
-
-const transactionsWithCustomer = allTransactions.map(tx => {
-    const customer = customers.find(c => c.id === tx.customerId);
-    return { ...tx, customerName: customer?.name || 'Unknown', customerNik: customer?.nik || 'N/A' };
-});
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 
 export default function TransactionsPage() {
-  const [clientTransactions, setClientTransactions] = React.useState<any[]>([]);
+  const firestore = useFirestore();
+  const [filter, setFilter] = React.useState<string[]>(['Deposit', 'Withdrawal', 'Transfer']);
 
-  React.useEffect(() => {
-    setClientTransactions(transactionsWithCustomer.map(tx => ({
-      ...tx,
-      formattedDate: new Date(tx.date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
-    })))
-  }, []);
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'transactions'), orderBy('transactionDate', 'desc'));
+  }, [firestore]);
+  
+  const { data: allTransactions, isLoading: transactionsLoading } = useCollection(transactionsQuery);
+
+  const customersRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  const { data: customers, isLoading: customersLoading } = useCollection(customersRef);
+  
+  const filteredTransactions = React.useMemo(() => {
+    if (!allTransactions || !customers) return [];
+    
+    return allTransactions
+      .filter(tx => filter.includes(tx.type))
+      .map(tx => {
+        const customer = customers.find(c => c.id === tx.customerId);
+        const txDate = tx.transactionDate?.toDate ? tx.transactionDate.toDate() : new Date();
+        return {
+          ...tx,
+          customerName: customer?.fullName || 'Unknown',
+          customerNik: customer?.nik || 'N/A',
+          formattedDate: txDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+        };
+    });
+  }, [allTransactions, customers, filter]);
+
+  const handleFilterChange = (type: string, checked: boolean) => {
+    setFilter(prev => {
+        if (checked) {
+            return [...prev, type];
+        } else {
+            return prev.filter(item => item !== type);
+        }
+    });
+  };
+
+  const isLoading = transactionsLoading || customersLoading;
 
   return (
     <>
@@ -63,13 +90,26 @@ export default function TransactionsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                <DropdownMenuLabel>Filter by Tipe</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem checked>
+                <DropdownMenuCheckboxItem
+                    checked={filter.includes('Deposit')}
+                    onCheckedChange={(checked) => handleFilterChange('Deposit', !!checked)}
+                >
                   Deposit
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Withdrawal</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Transfer</DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                    checked={filter.includes('Withdrawal')}
+                    onCheckedChange={(checked) => handleFilterChange('Withdrawal', !!checked)}
+                >
+                    Withdrawal
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                    checked={filter.includes('Transfer')}
+                    onCheckedChange={(checked) => handleFilterChange('Transfer', !!checked)}
+                >
+                    Transfer
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button size="sm" asChild className="h-8 gap-1">
@@ -94,7 +134,12 @@ export default function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clientTransactions.map((tx) => (
+              {isLoading && (
+                 <TableRow>
+                    <TableCell colSpan={4} className="text-center">Memuat transaksi...</TableCell>
+                </TableRow>
+              )}
+              {!isLoading && filteredTransactions.map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell>
                     <div className="font-medium">{tx.customerName}</div>

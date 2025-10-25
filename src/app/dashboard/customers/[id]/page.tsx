@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, FileDown, MoreVertical } from "lucide-react";
-import React from 'react';
+import React, { useMemo } from 'react';
+import { collection, query, where } from 'firebase/firestore';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { customers, transactions as allTransactions } from "@/lib/data";
+import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 
 const PrintButton = () => (
     <Button onClick={() => window.print()}>
@@ -34,20 +35,39 @@ const PrintButton = () => (
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
   const [formattedJoinDate, setFormattedJoinDate] = React.useState('');
   const [clientTransactions, setClientTransactions] = React.useState<any[]>([]);
+  const firestore = useFirestore();
 
-  const customer = customers.find((c) => c.id === params.id);
-  const transactions = allTransactions.filter((t) => t.customerId === params.id);
+  const customerRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  const { data: customer, isLoading: isCustomerLoading } = useDoc(customerRef ? customerRef.doc(params.id) : null);
+  
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'transactions'), where('customerId', '==', params.id));
+  }, [firestore, params.id]);
+
+  const { data: transactions, isLoading: areTransactionsLoading } = useCollection(transactionsQuery);
 
   React.useEffect(() => {
     if (customer) {
-      setFormattedJoinDate(new Date(customer.joinDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }));
+      // Assuming joinDate is a string. If it's a Timestamp, convert it.
+      const joinDate = customer.joinDate?.toDate ? customer.joinDate.toDate() : new Date(customer.joinDate);
+      setFormattedJoinDate(joinDate.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }));
     }
-    setClientTransactions(transactions.map(tx => ({
-      ...tx,
-      formattedDate: new Date(tx.date).toLocaleDateString('id-ID'),
-    })));
+    if(transactions) {
+      setClientTransactions(transactions.map(tx => {
+        const txDate = tx.date?.toDate ? tx.date.toDate() : new Date(tx.date);
+        return {
+          ...tx,
+          formattedDate: txDate.toLocaleDateString('id-ID'),
+        }
+      }));
+    }
   }, [customer, transactions]);
 
+
+  if (isCustomerLoading || areTransactionsLoading) {
+    return <div>Memuat data...</div>;
+  }
 
   if (!customer) {
     return (
@@ -85,7 +105,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <CardHeader className="flex flex-row items-start bg-muted/50 rounded-t-lg">
               <div className="grid gap-0.5">
                 <CardTitle className="group flex items-center gap-2 text-lg">
-                  {customer.name}
+                  {customer.fullName}
                 </CardTitle>
                 <CardDescription>NIK: {customer.nik}</CardDescription>
               </div>
@@ -118,7 +138,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <CardHeader>
               <CardTitle>Riwayat Transaksi</CardTitle>
               <CardDescription>
-                Semua transaksi yang dilakukan oleh {customer.name}.
+                Semua transaksi yang dilakukan oleh {customer.fullName}.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -160,10 +180,10 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 alt="Avatar Pelanggan"
                 className="aspect-square w-32 rounded-full object-cover mb-4"
                 height="128"
-                src={customer.avatarUrl}
+                src={customer.avatarUrl || "https://picsum.photos/seed/placeholder/128/128"}
                 width="128"
               />
-              <p className="text-center font-semibold">{customer.name}</p>
+              <p className="text-center font-semibold">{customer.fullName}</p>
               <p className="text-center text-sm text-muted-foreground">{customer.address}</p>
             </CardContent>
           </Card>

@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { PlusCircle, Search, MoreHorizontal } from "lucide-react";
+import { collection, deleteDoc, doc } from "firebase/firestore";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -30,15 +31,36 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { customers as allCustomers } from "@/lib/data";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useToast } from "@/hooks/use-toast";
 
 export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = React.useState("");
+  const firestore = useFirestore();
+  const customersRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  const { data: allCustomers, isLoading } = useCollection(customersRef);
+  const { toast } = useToast();
+
+  const handleDelete = (customerId: string, customerName: string) => {
+    if(!firestore) return;
+    if (confirm(`Apakah Anda yakin ingin menghapus pelanggan ${customerName}?`)) {
+      const docRef = doc(firestore, 'customers', customerId);
+      deleteDocumentNonBlocking(docRef);
+      toast({
+        title: "Pelanggan Dihapus",
+        description: `${customerName} telah dihapus.`,
+      });
+    }
+  };
   
-  const filteredCustomers = allCustomers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.nik.includes(searchTerm)
-  );
+  const filteredCustomers = React.useMemo(() => {
+    if (!allCustomers) return [];
+    return allCustomers.filter(customer =>
+      customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.nik.includes(searchTerm)
+    );
+  }, [allCustomers, searchTerm]);
 
   return (
     <>
@@ -84,18 +106,23 @@ export default function CustomersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCustomers.map((customer) => (
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">Memuat data pelanggan...</TableCell>
+                </TableRow>
+              )}
+              {!isLoading && filteredCustomers.map((customer) => (
                 <TableRow key={customer.id}>
                   <TableCell className="hidden sm:table-cell">
                     <Image
                       alt="Customer avatar"
                       className="aspect-square rounded-full object-cover"
                       height="40"
-                      src={customer.avatarUrl}
+                      src={customer.avatarUrl || 'https://picsum.photos/seed/placeholder/40/40'}
                       width="40"
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
+                  <TableCell className="font-medium">{customer.fullName}</TableCell>
                   <TableCell>{customer.nik}</TableCell>
                   <TableCell className="hidden md:table-cell">
                     {customer.address}
@@ -116,7 +143,7 @@ export default function CustomersPage() {
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem asChild><Link href={`/dashboard/customers/${customer.id}`}>Lihat Detail</Link></DropdownMenuItem>
                         <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Hapus</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(customer.id, customer.fullName)}>Hapus</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

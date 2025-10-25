@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { ArrowLeft } from "lucide-react";
+import { collection, serverTimestamp } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +25,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { customers } from "@/lib/data";
+import { useCollection, useFirestore, addDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
+
+const transactionSchema = z.object({
+  customerId: z.string().min(1, "Pelanggan harus dipilih"),
+  type: z.enum(["Deposit", "Withdrawal", "Transfer"]),
+  currency: z.enum(["IDR", "USD", "EUR"]),
+  amount: z.coerce.number().min(1, "Jumlah harus lebih dari 0"),
+  source: z.string().min(1, "Sumber dana harus diisi"),
+  destination: z.string().min(1, "Tujuan dana harus diisi"),
+});
 
 export default function NewTransactionPage() {
+  const firestore = useFirestore();
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  const customersRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  const { data: customers, isLoading: customersLoading } = useCollection(customersRef);
+  
+  const form = useForm<z.infer<typeof transactionSchema>>({
+    resolver: zodResolver(transactionSchema),
+    defaultValues: {
+      customerId: "",
+      type: "Deposit",
+      currency: "IDR",
+      source: "",
+      destination: ""
+    },
+  });
+
+  async function onSubmit(values: z.infer<typeof transactionSchema>) {
+    if (!firestore) return;
+
+    try {
+      const transactionsRef = collection(firestore, 'transactions');
+      await addDocumentNonBlocking(transactionsRef, {
+        ...values,
+        transactionDate: serverTimestamp(),
+      });
+
+      toast({
+        title: "Transaksi berhasil!",
+        description: "Transaksi baru telah berhasil dicatat.",
+      });
+      router.push("/dashboard/transactions");
+
+    } catch (error) {
+      console.error("Error adding transaction: ", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal menyimpan.",
+        description: "Terjadi kesalahan saat mencatat transaksi.",
+      });
+    }
+  }
+
+
   return (
     <>
       <div className="flex items-center gap-4 mb-8">
@@ -44,85 +105,131 @@ export default function NewTransactionPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-6">
-            <div className="grid gap-3">
-              <Label htmlFor="customer">Pelanggan</Label>
-              <Select>
-                <SelectTrigger id="customer" aria-label="Pilih Pelanggan">
-                  <SelectValue placeholder="Pilih pelanggan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name} - {c.nik}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="grid gap-3">
-                  <Label htmlFor="type">Jenis Transaksi</Label>
-                  <Select>
-                    <SelectTrigger id="type" aria-label="Pilih Jenis Transaksi">
-                      <SelectValue placeholder="Pilih jenis" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="deposit">Deposit</SelectItem>
-                      <SelectItem value="withdrawal">Withdrawal</SelectItem>
-                      <SelectItem value="transfer">Transfer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-3">
-                  <Label htmlFor="currency">Mata Uang</Label>
-                  <Select defaultValue="IDR">
-                    <SelectTrigger id="currency" aria-label="Pilih Mata Uang">
-                      <SelectValue placeholder="Pilih mata uang" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="IDR">IDR (Rupiah)</SelectItem>
-                      <SelectItem value="USD">USD (Dolar AS)</SelectItem>
-                      <SelectItem value="EUR">EUR (Euro)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-            </div>
-
-            <div className="grid gap-3">
-              <Label htmlFor="amount">Jumlah</Label>
-              <Input
-                id="amount"
-                type="number"
-                placeholder="Contoh: 5000000"
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
+              <FormField
+                control={form.control}
+                name="customerId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pelanggan</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger aria-label="Pilih Pelanggan" disabled={customersLoading}>
+                          <SelectValue placeholder="Pilih pelanggan..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {customers?.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.fullName} - {c.nik}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="grid gap-3">
-                  <Label htmlFor="source">Sumber Dana</Label>
-                  <Input
-                    id="source"
-                    type="text"
-                    placeholder="Contoh: Bank Transfer"
-                  />
-                </div>
-                <div className="grid gap-3">
-                  <Label htmlFor="destination">Tujuan Dana</Label>
-                  <Input
-                    id="destination"
-                    type="text"
-                    placeholder="Contoh: Savings Account"
-                  />
-                </div>
-            </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Jenis Transaksi</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                           <SelectTrigger aria-label="Pilih Jenis Transaksi">
+                            <SelectValue placeholder="Pilih jenis" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Deposit">Deposit</SelectItem>
+                          <SelectItem value="Withdrawal">Withdrawal</SelectItem>
+                          <SelectItem value="Transfer">Transfer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mata Uang</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                           <SelectTrigger aria-label="Pilih Mata Uang">
+                            <SelectValue placeholder="Pilih mata uang" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="IDR">IDR (Rupiah)</SelectItem>
+                          <SelectItem value="USD">USD (Dolar AS)</SelectItem>
+                          <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-            <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" asChild>
-                    <Link href="/dashboard/transactions">Batal</Link>
-                </Button>
-                <Button type="submit">Simpan Transaksi</Button>
-            </div>
-          </form>
+               <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jumlah</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Contoh: 5000000" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="source"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sumber Dana</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Contoh: Bank Transfer" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="destination"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tujuan Dana</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Contoh: Savings Account" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="outline" type="button" asChild>
+                      <Link href="/dashboard/transactions">Batal</Link>
+                  </Button>
+                  <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Transaksi"}
+                  </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </>

@@ -1,16 +1,18 @@
+import { Timestamp } from 'firebase/firestore';
+
 export type Customer = {
   id: string;
   nik: string;
-  name: string;
+  fullName: string;
   address: string;
-  avatarUrl: string;
-  joinDate: string;
+  avatarUrl?: string;
+  joinDate: Timestamp;
 };
 
 export type Transaction = {
   id: string;
   customerId: string;
-  date: string;
+  transactionDate: Timestamp;
   type: 'Deposit' | 'Withdrawal' | 'Transfer';
   amount: number;
   currency: 'IDR' | 'USD' | 'EUR';

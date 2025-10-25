@@ -1,9 +1,8 @@
 'use client'
 
 import Link from "next/link";
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Image from "next/image";
-
 import {
   Home,
   Users,
@@ -12,6 +11,7 @@ import {
   LogOut,
   ChevronDown
 } from "lucide-react";
+import { getAuth, signOut } from "firebase/auth";
 
 import { cn } from "@/lib/utils";
 import { useSidebar, SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -28,6 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/logo";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Toaster } from "@/components/ui/toaster";
+import { useUser } from "@/firebase";
+import React from "react";
 
 
 const navItems = [
@@ -69,7 +71,20 @@ function MainSidebar() {
 }
 
 function Header() {
-  const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar-1');
+  const { user } = useUser();
+  const router = useRouter();
+  const auth = getAuth();
+
+  const handleLogout = () => {
+    signOut(auth).then(() => {
+      router.push('/login');
+    }).catch((error) => {
+      console.error("Logout error", error);
+    });
+  };
+
+  const userAvatar = user?.photoURL || PlaceHolderImages.find(img => img.id === 'user-avatar-1')?.imageUrl;
+  const userDisplayName = user?.displayName || user?.email;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 print-hidden">
@@ -91,27 +106,24 @@ function Header() {
           >
             {userAvatar && (
               <Image
-                src={userAvatar.imageUrl}
+                src={userAvatar}
                 width={40}
                 height={40}
-                alt={userAvatar.description}
-                data-ai-hint={userAvatar.imageHint}
+                alt="User avatar"
                 className="overflow-hidden rounded-full"
               />
             )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Akun Saya</DropdownMenuLabel>
+          <DropdownMenuLabel>{userDisplayName}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem>Pengaturan</DropdownMenuItem>
           <DropdownMenuItem>Dukungan</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/login">
-              <LogOut className="mr-2 h-4 w-4"/>
-              <span>Logout</span>
-            </Link>
+          <DropdownMenuItem onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4"/>
+            <span>Logout</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -121,6 +133,23 @@ function Header() {
 
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div>Memuat...</div>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full flex-col">

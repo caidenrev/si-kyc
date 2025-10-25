@@ -10,6 +10,7 @@ import {
   Tooltip,
 } from "recharts";
 import { ArrowUp, DollarSign, Users, ArrowRightLeft } from "lucide-react";
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -28,8 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { customers, transactions } from "@/lib/data";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 
 const initialChartData = [
   { name: "Sen", total: 0 },
@@ -41,13 +41,26 @@ const initialChartData = [
   { name: "Min", total: 0 },
 ];
 
-const recentTransactions = transactions.slice(0, 5).map(tx => {
-    const customer = customers.find(c => c.id === tx.customerId);
-    return { ...tx, customerName: customer?.name || 'Unknown' };
-});
-
 export default function Dashboard() {
   const [chartData, setChartData] = React.useState(initialChartData);
+  const firestore = useFirestore();
+
+  const customersRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  const { data: customers } = useCollection(customersRef);
+
+  const transactionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'transactions'), orderBy('transactionDate', 'desc'), limit(5));
+  }, [firestore]);
+  const { data: recentTransactions } = useCollection(transactionsQuery);
+
+  const transactionsWithCustomerNames = React.useMemo(() => {
+    if (!recentTransactions || !customers) return [];
+    return recentTransactions.map(tx => {
+      const customer = customers.find(c => c.id === tx.customerId);
+      return { ...tx, customerName: customer?.fullName || 'Unknown' };
+    });
+  }, [recentTransactions, customers]);
 
   React.useEffect(() => {
     const data = [
@@ -62,6 +75,9 @@ export default function Dashboard() {
     setChartData(data);
   }, []);
 
+  const totalRevenue = recentTransactions?.reduce((acc, tx) => tx.type === 'Deposit' ? acc + tx.amount : acc, 0) || 0;
+  const totalCustomers = customers?.length || 0;
+
   return (
     <>
       <PageHeader
@@ -71,19 +87,19 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <StatCard
           title="Total Pendapatan"
-          value="Rp 45.231.890"
+          value={`Rp ${new Intl.NumberFormat('id-ID').format(totalRevenue)}`}
           icon={DollarSign}
           description="+20.1% dari bulan lalu"
         />
         <StatCard
           title="Pelanggan Aktif"
-          value="+2350"
+          value={`+${totalCustomers}`}
           icon={Users}
           description="+180.1% dari bulan lalu"
         />
         <StatCard
           title="Transaksi Hari Ini"
-          value="12"
+          value={recentTransactions?.filter(tx => new Date(tx.transactionDate.toDate()).toDateString() === new Date().toDateString()).length || 0}
           icon={ArrowRightLeft}
           description="+5 sejak kemarin"
         />
@@ -144,7 +160,7 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentTransactions.map((tx) => (
+                {transactionsWithCustomerNames.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell>
                       <div className="font-medium">{tx.customerName}</div>
