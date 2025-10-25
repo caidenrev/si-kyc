@@ -1,12 +1,14 @@
+
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ArrowLeft } from "lucide-react";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { collection, serverTimestamp, getDocs } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +19,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,9 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCollection, useFirestore, addDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { useFirestore, addDocumentNonBlocking } from "@/firebase";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import type { Customer } from "@/lib/definitions";
 
 const transactionSchema = z.object({
   customerId: z.string().min(1, "Pelanggan harus dipilih"),
@@ -42,9 +44,31 @@ export default function NewTransactionPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(true);
   
-  const customersRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
-  const { data: customers, isLoading: customersLoading } = useCollection(customersRef);
+  useEffect(() => {
+    async function fetchCustomers() {
+      if (!firestore) return;
+      try {
+        setCustomersLoading(true);
+        const customersRef = collection(firestore, 'customers');
+        const querySnapshot = await getDocs(customersRef);
+        const customersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+        setCustomers(customersData);
+      } catch (error) {
+        console.error("Error fetching customers: ", error);
+        toast({
+          variant: "destructive",
+          title: "Gagal memuat pelanggan.",
+          description: "Terjadi kesalahan saat mengambil data pelanggan.",
+        });
+      } finally {
+        setCustomersLoading(false);
+      }
+    }
+    fetchCustomers();
+  }, [firestore, toast]);
   
   const form = useForm<z.infer<typeof transactionSchema>>({
     resolver: zodResolver(transactionSchema),
@@ -116,7 +140,7 @@ export default function NewTransactionPage() {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger aria-label="Pilih Pelanggan" disabled={customersLoading}>
-                          <SelectValue placeholder="Pilih pelanggan..." />
+                          <SelectValue placeholder={customersLoading ? "Memuat pelanggan..." : "Pilih pelanggan..."} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

@@ -6,7 +6,7 @@ export type Customer = {
   fullName: string;
   address: string;
   avatarUrl?: string;
-  joinDate: Timestamp;
+  joinDate?: Timestamp; // Made optional for optimistic updates
 };
 
 export type Transaction = {
