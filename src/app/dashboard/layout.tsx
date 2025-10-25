@@ -11,6 +11,8 @@ import {
   LogOut,
   Menu,
   User,
+  Settings,
+  LifeBuoy,
 } from "lucide-react";
 import { getAuth, signOut } from "firebase/auth";
 
@@ -125,8 +127,18 @@ function Header() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>{userDisplayName}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Pengaturan</DropdownMenuItem>
-          <DropdownMenuItem>Dukungan</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard/settings">
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Pengaturan</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard/support">
+              <LifeBuoy className="mr-2 h-4 w-4" />
+              <span>Dukungan</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4"/>
