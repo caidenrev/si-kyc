@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useUser, initiateEmailSignUp } from "@/firebase";
+import { useAuth, useUser, initiateEmailSignUp, initiateGoogleSignIn } from "@/firebase";
 import { FirebaseError } from "firebase/app";
 
 const registerSchema = z.object({
@@ -53,8 +53,7 @@ export default function RegisterPage() {
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     if (!auth) return;
     try {
-      // We don't need to await this. The onAuthStateChanged listener will handle the redirect.
-      initiateEmailSignUp(auth, values.email, values.password, values.fullName);
+      await initiateEmailSignUp(auth, values.email, values.password, values.fullName);
       toast({
         title: "Pendaftaran Berhasil!",
         description: "Akun Anda telah dibuat. Anda akan diarahkan ke dashboard.",
@@ -74,6 +73,28 @@ export default function RegisterPage() {
       });
     }
   }
+
+  const handleGoogleSignIn = async () => {
+    if (!auth) return;
+    try {
+        await initiateGoogleSignIn(auth);
+        toast({
+            title: "Pendaftaran Berhasil!",
+            description: "Akun Anda telah dibuat. Anda akan diarahkan ke dashboard.",
+        });
+    } catch (error) {
+        console.error("Google Sign-In failed:", error);
+        let description = "Terjadi kesalahan saat mendaftar dengan Google.";
+        if (error instanceof FirebaseError) {
+            description = "Gagal untuk mendaftar dengan Google. Silakan coba lagi.";
+        }
+        toast({
+            variant: "destructive",
+            title: "Pendaftaran Gagal",
+            description,
+        });
+    }
+  };
 
   if (isUserLoading || user) {
     return <div className="flex h-screen w-full items-center justify-center">Memuat...</div>;
@@ -138,7 +159,7 @@ export default function RegisterPage() {
                   <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? "Memproses..." : "Buat Akun"}
                   </Button>
-                  <Button variant="outline" className="w-full" type="button">
+                  <Button variant="outline" className="w-full" type="button" onClick={handleGoogleSignIn}>
                     Daftar dengan Google
                   </Button>
                 </form>

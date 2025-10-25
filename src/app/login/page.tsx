@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, initiateEmailSignIn, useUser } from "@/firebase";
+import { useAuth, initiateEmailSignIn, useUser, initiateGoogleSignIn } from "@/firebase";
 import { FirebaseError } from "firebase/app";
 
 const loginSchema = z.object({
@@ -72,6 +72,28 @@ export default function LoginPage() {
       });
     }
   }
+
+  const handleGoogleSignIn = async () => {
+    if (!auth) return;
+    try {
+        await initiateGoogleSignIn(auth);
+        toast({
+            title: "Login Berhasil!",
+            description: "Anda akan diarahkan ke dashboard.",
+        });
+    } catch (error) {
+        console.error("Google Sign-In failed:", error);
+        let description = "Terjadi kesalahan saat login dengan Google.";
+        if (error instanceof FirebaseError) {
+            description = "Gagal untuk login dengan Google. Silakan coba lagi.";
+        }
+        toast({
+            variant: "destructive",
+            title: "Login Gagal",
+            description,
+        });
+    }
+  };
 
   if (isUserLoading || user) {
     return <div className="flex h-screen w-full items-center justify-center">Memuat...</div>;
@@ -130,7 +152,7 @@ export default function LoginPage() {
                   <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? "Memproses..." : "Login"}
                   </Button>
-                  <Button variant="outline" className="w-full" type="button">
+                  <Button variant="outline" className="w-full" type="button" onClick={handleGoogleSignIn}>
                     Login dengan Google
                   </Button>
                 </form>
