@@ -30,6 +30,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -45,38 +56,37 @@ export default function CustomersPage() {
 
   const handleDelete = async (customerId: string, customerName: string) => {
     if (!firestore) return;
-    if (confirm(`Apakah Anda yakin ingin menghapus pelanggan ${customerName} beserta seluruh riwayat transaksinya? Tindakan ini tidak dapat dibatalkan.`)) {
-      try {
-        // Create a batch
-        const batch = writeBatch(firestore);
+    
+    try {
+      // Create a batch
+      const batch = writeBatch(firestore);
 
-        // 1. Find and delete all transactions for the customer
-        const transactionsQuery = query(collection(firestore, 'transactions'), where('customerId', '==', customerId));
-        const transactionsSnapshot = await getDocs(transactionsQuery);
-        transactionsSnapshot.forEach(doc => {
-          batch.delete(doc.ref);
-        });
+      // 1. Find and delete all transactions for the customer
+      const transactionsQuery = query(collection(firestore, 'transactions'), where('customerId', '==', customerId));
+      const transactionsSnapshot = await getDocs(transactionsQuery);
+      transactionsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
 
-        // 2. Delete the customer document
-        const customerDocRef = doc(firestore, 'customers', customerId);
-        batch.delete(customerDocRef);
+      // 2. Delete the customer document
+      const customerDocRef = doc(firestore, 'customers', customerId);
+      batch.delete(customerDocRef);
 
-        // 3. Commit the batch
-        await batch.commit();
+      // 3. Commit the batch
+      await batch.commit();
 
-        toast({
-          title: "Pelanggan Dihapus",
-          description: `${customerName} dan semua transaksinya telah berhasil dihapus.`,
-        });
+      toast({
+        title: "Pelanggan Dihapus",
+        description: `${customerName} dan semua transaksinya telah berhasil dihapus.`,
+      });
 
-      } catch (error) {
-        console.error("Error deleting customer and their transactions: ", error);
-        toast({
-          variant: "destructive",
-          title: "Gagal Menghapus",
-          description: "Terjadi kesalahan saat menghapus data pelanggan dan transaksinya.",
-        });
-      }
+    } catch (error) {
+      console.error("Error deleting customer and their transactions: ", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal Menghapus",
+        description: "Terjadi kesalahan saat menghapus data pelanggan dan transaksinya.",
+      });
     }
   };
   
@@ -151,28 +161,53 @@ export default function CustomersPage() {
                     {customer.address}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/pelanggan/${customer.id}`}>Lihat Detail</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/pelanggan/ubah/${customer.id}`}>Edit</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(customer.id, customer.fullName)}>Hapus</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <AlertDialog>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/pelanggan/${customer.id}`}>Lihat Detail</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/pelanggan/ubah/${customer.id}`}>Edit</Link>
+                          </DropdownMenuItem>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                Hapus
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                       <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Apakah Anda benar-benar yakin?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tindakan ini tidak dapat dibatalkan. Ini akan menghapus pelanggan
+                              <span className="font-bold"> {customer.fullName} </span>
+                              secara permanen beserta seluruh riwayat transaksinya.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(customer.id, customer.fullName)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Ya, Hapus
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}
