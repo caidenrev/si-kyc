@@ -1,87 +1,66 @@
 /**
- * @fileoverview Firestore Security Rules for the KYC and Transaction Management App.
+ * @fileoverview Firestore Security Rules for the application.
  *
  * Core Philosophy:
- * This ruleset implements a security model based on collection-level access control.  It enforces restrictions on who can read and write data to the `customers` and `transactions` collections.
+ * This ruleset enforces a flat, collection-based security model. Customers and Transactions are stored in their respective
+ * top-level collections.  Access is currently unrestricted; however, these rules provide the foundation for implementing
+ * fine-grained access control in the future (e.g., owner-only or role-based access).
  *
  * Data Structure:
- * The Firestore database contains two top-level collections:
- *   - /customers/{customerId}: Stores customer KYC data, with each document ID representing the customer's unique ID.
- *   - /transactions/{transactionId}: Stores transaction data, with each document ID representing the transaction's unique ID.
+ * - /customers/{customerId}: Stores customer KYC data.
+ * - /transactions/{transactionId}: Stores transaction data.
  *
  * Key Security Decisions:
- *   - No user-specific subcollections are used. All data is stored in top-level collections.
- *   - Listing of `customers` collection is forbidden.
- *   - Listing of `transactions` collection is not restricted in this prototype.
+ * - Listing of customers is currently allowed. This should be reviewed and potentially restricted in a production environment.
+ * - Listing of transactions is currently allowed. This should be reviewed and potentially restricted in a production environment.
+ * - No data validation is enforced beyond basic type checking. Data validation rules must be added to prevent malicious or malformed data.
  *
  * Denormalization for Authorization:
- *   - Not used in this version.
+ * Not currently used, but consider denormalizing authorization data into documents to avoid costly `get()` operations in the future if
+ * collaborative features are added (e.g., a list of authorized users on a customer document).
  *
  * Structural Segregation:
- *   - Not used in this version.
+ * Not currently used, but consider using separate collections for private and public customer data in the future if needed (e.g.,
+ * /customers/{customerId}/private and /publicCustomers/{customerId}).
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to customer data.
+     * @description Allows read and write access to the customers collection.
      * @path /databases/{database}/documents/customers/{customerId}
-     * @allow (get) Authenticated user can read a specific customer document.
-     * @deny (list) Listing all customers is forbidden.
-     * @deny (create) Customers cannot be created directly (likely created via backend).
-     * @allow (update) Authenticated user can update their own customer document.
-     * @allow (delete) Authenticated user can delete their own customer document.
-     * @principle Enforces document ownership for writes, restricts listing.
+     * @allow (get, list): Any signed-in user can read the customer data.
+     * @allow (create, update, delete): Any signed-in user can create, update, or delete customer data.
+     * @deny (create, update, delete): Not applicable, currently any signed in user can perform all operations.
+     * @principle Currently allows any signed-in user to read and write customer data. In the future, implement access control by customer id.
      */
     match /customers/{customerId} {
-      // Helper function to check if the user is signed in.
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Helper function to check if the authenticated user's UID matches the customerId.
-      function isOwner(customerId) {
-        return request.auth.uid == customerId;
-      }
-
-      // Helper function to check if the user is the existing owner of the document.
-      function isExistingOwner(customerId) {
-          return isOwner(customerId) && resource != null;
-      }
-      
       allow get: if isSignedIn();
-      allow list: if false;
-
-      allow create: if false;
-
-      allow update: if isExistingOwner(customerId);
-      allow delete: if isExistingOwner(customerId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to transaction data.
+     * @description Allows read and write access to the transactions collection.
      * @path /databases/{database}/documents/transactions/{transactionId}
-     * @allow (get) Authenticated user can read a specific transaction document.
-     * @allow (list) Authenticated user can list all transaction documents.
-     * @deny (create) Authenticated user cannot create a transaction if not signed in.
-     * @allow (update) Authenticated user can update a transaction document.
-     * @allow (delete) Authenticated user can delete a transaction document.
-     * @principle Requires authentication for creating transactions, enforces document ownership for writes.
+     * @allow (get, list): Any signed-in user can read transaction data.
+     * @allow (create, update, delete): Any signed-in user can create, update, or delete transaction data.
+     * @deny (create, update, delete): Not applicable, currently any signed in user can perform all operations.
+     * @principle Currently allows any signed-in user to read and write transaction data. In the future, implement access control by customer id.
      */
     match /transactions/{transactionId} {
-      // Helper function to check if the user is signed in.
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       allow get: if isSignedIn();
-      allow list: if true;
-
+      allow list: if isSignedIn();
       allow create: if isSignedIn();
-
       allow update: if isSignedIn();
       allow delete: if isSignedIn();
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }
