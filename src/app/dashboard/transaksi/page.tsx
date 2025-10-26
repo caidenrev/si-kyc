@@ -3,8 +3,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { PlusCircle, ListFilter } from 'lucide-react';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { PlusCircle, ListFilter, MoreHorizontal } from 'lucide-react';
+import { collection, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -21,18 +21,32 @@ import {
 } from '@/components/ui/table';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useToast } from "@/hooks/use-toast";
 
 export default function TransactionsPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [filter, setFilter] = React.useState<string[]>(['Deposit', 'Withdrawal', 'Transfer']);
 
   const transactionsQuery = useMemoFirebase(() => {
@@ -70,6 +84,25 @@ export default function TransactionsPage() {
             return prev.filter(item => item !== type);
         }
     });
+  };
+
+  const handleDelete = async (transactionId: string) => {
+    if (!firestore) return;
+    try {
+      const transactionDocRef = doc(firestore, 'transactions', transactionId);
+      await deleteDoc(transactionDocRef);
+      toast({
+        title: "Transaksi Dihapus",
+        description: "Catatan transaksi telah berhasil dihapus.",
+      });
+    } catch (error) {
+       console.error("Error deleting transaction: ", error);
+       toast({
+        variant: "destructive",
+        title: "Gagal Menghapus",
+        description: "Terjadi kesalahan saat menghapus transaksi.",
+      });
+    }
   };
 
   const isLoading = transactionsLoading || customersLoading;
@@ -132,12 +165,15 @@ export default function TransactionsPage() {
                 <TableHead>Jenis</TableHead>
                 <TableHead className="hidden md:table-cell">Tanggal</TableHead>
                 <TableHead className="text-right">Jumlah</TableHead>
+                <TableHead>
+                    <span className="sr-only">Aksi</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                  <TableRow>
-                    <TableCell colSpan={4} className="text-center">Memuat transaksi...</TableCell>
+                    <TableCell colSpan={5} className="text-center">Memuat transaksi...</TableCell>
                 </TableRow>
               )}
               {!isLoading && filteredTransactions.map((tx) => (
@@ -159,6 +195,46 @@ export default function TransactionsPage() {
                       style: 'currency',
                       currency: tx.currency,
                     }).format(tx.amount)}
+                  </TableCell>
+                  <TableCell>
+                    <AlertDialog>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/transaksi/ubah/${tx.id}`}>Edit</Link>
+                          </DropdownMenuItem>
+                          <AlertDialogTrigger asChild>
+                             <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                Hapus
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Apakah Anda benar-benar yakin?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tindakan ini tidak dapat dibatalkan. Ini akan menghapus data transaksi secara permanen.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(tx.id)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Ya, Hapus
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}
