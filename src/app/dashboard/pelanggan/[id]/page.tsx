@@ -83,7 +83,7 @@ export default function CustomerDetailPage() {
           Data pelanggan yang Anda cari tidak ada.
         </p>
         <Button asChild className="mt-4">
-          <Link href="/dashboard/customers">Kembali ke Daftar Pelanggan</Link>
+          <Link href="/dashboard/pelanggan">Kembali ke Daftar Pelanggan</Link>
         </Button>
       </div>
     );
@@ -93,7 +93,7 @@ export default function CustomerDetailPage() {
     <div className="print-p-0">
       <div className="flex items-center gap-4 mb-8 print-hidden">
         <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <Link href="/dashboard/customers">
+          <Link href="/dashboard/pelanggan">
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Kembali</span>
           </Link>

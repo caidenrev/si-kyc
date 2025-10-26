@@ -120,7 +120,7 @@ export default function EditCustomerPage() {
         title: "Pelanggan diperbarui!",
         description: `Data ${values.fullName} telah berhasil diperbarui.`,
       });
-      router.push("/dashboard/customers");
+      router.push("/dashboard/pelanggan");
 
     } catch (error) {
       console.error("Error updating customer: ", error);
@@ -136,7 +136,7 @@ export default function EditCustomerPage() {
     <>
       <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <Link href="/dashboard/customers">
+          <Link href="/dashboard/pelanggan">
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Kembali</span>
           </Link>
@@ -212,7 +212,7 @@ export default function EditCustomerPage() {
                  </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" type="button" asChild>
-                    <Link href="/dashboard/customers">Batal</Link>
+                    <Link href="/dashboard/pelanggan">Batal</Link>
                   </Button>
                   <Button type="submit" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}

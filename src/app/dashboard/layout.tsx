@@ -1,3 +1,4 @@
+
 'use client'
 
 import Link from "next/link";
@@ -41,8 +42,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
-  { href: "/dashboard/customers", icon: Users, label: "Pelanggan" },
-  { href: "/dashboard/transactions", icon: ArrowRightLeft, label: "Transaksi" },
+  { href: "/dashboard/pelanggan", icon: Users, label: "Pelanggan" },
+  { href: "/dashboard/transaksi", icon: ArrowRightLeft, label: "Transaksi" },
 ];
 
 function SidebarNav() {
@@ -128,13 +129,13 @@ function Header() {
           <DropdownMenuLabel>{userDisplayName}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings">
+            <Link href="/dashboard/pengaturan">
               <Settings className="mr-2 h-4 w-4" />
               <span>Pengaturan</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/support">
+            <Link href="/dashboard/dukungan">
               <LifeBuoy className="mr-2 h-4 w-4" />
               <span>Dukungan</span>
             </Link>

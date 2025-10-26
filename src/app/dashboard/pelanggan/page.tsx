@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { PlusCircle, Search, MoreHorizontal, User } from "lucide-react";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, deleteDoc } from "firebase/firestore";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -43,15 +43,24 @@ export default function CustomersPage() {
   const { data: allCustomers, isLoading } = useCollection(customersRef);
   const { toast } = useToast();
 
-  const handleDelete = (customerId: string, customerName: string) => {
+  const handleDelete = async (customerId: string, customerName: string) => {
     if(!firestore) return;
     if (confirm(`Apakah Anda yakin ingin menghapus pelanggan ${customerName}?`)) {
       const docRef = doc(firestore, 'customers', customerId);
-      deleteDocumentNonBlocking(docRef);
-      toast({
-        title: "Pelanggan Dihapus",
-        description: `${customerName} telah dihapus.`,
-      });
+       try {
+        await deleteDoc(docRef);
+        toast({
+            title: "Pelanggan Dihapus",
+            description: `${customerName} telah berhasil dihapus.`,
+        });
+      } catch (error) {
+          console.error("Error deleting customer: ", error);
+          toast({
+              variant: "destructive",
+              title: "Gagal Menghapus",
+              description: "Terjadi kesalahan saat menghapus data pelanggan.",
+          });
+      }
     }
   };
   
@@ -70,7 +79,7 @@ export default function CustomersPage() {
         description="Kelola data pelanggan dan riwayat transaksi mereka."
       >
         <Button asChild>
-          <Link href="/dashboard/customers/new">
+          <Link href="/dashboard/pelanggan/baru">
             <PlusCircle className="mr-2 h-4 w-4" /> Tambah Pelanggan
           </Link>
         </Button>
@@ -140,10 +149,10 @@ export default function CustomersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/customers/${customer.id}`}>Lihat Detail</Link>
+                          <Link href={`/dashboard/pelanggan/${customer.id}`}>Lihat Detail</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/customers/edit/${customer.id}`}>Edit</Link>
+                          <Link href={`/dashboard/pelanggan/ubah/${customer.id}`}>Edit</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(customer.id, customer.fullName)}>Hapus</DropdownMenuItem>
                       </DropdownMenuContent>

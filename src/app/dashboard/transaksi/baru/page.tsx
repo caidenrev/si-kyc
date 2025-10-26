@@ -96,7 +96,7 @@ export default function NewTransactionPage() {
         title: "Transaksi berhasil!",
         description: "Transaksi baru telah berhasil dicatat.",
       });
-      router.push("/dashboard/transactions");
+      router.push("/dashboard/transaksi");
 
     } catch (error) {
       console.error("Error adding transaction: ", error);
@@ -113,7 +113,7 @@ export default function NewTransactionPage() {
     <>
       <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <Link href="/dashboard/transactions">
+          <Link href="/dashboard/transaksi">
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Kembali</span>
           </Link>
@@ -247,7 +247,7 @@ export default function NewTransactionPage() {
 
               <div className="flex justify-end gap-2 mt-4">
                   <Button variant="outline" type="button" asChild>
-                      <Link href="/dashboard/transactions">Batal</Link>
+                      <Link href="/dashboard/transaksi">Batal</Link>
                   </Button>
                   <Button type="submit" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Transaksi"}

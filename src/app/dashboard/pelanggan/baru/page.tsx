@@ -76,7 +76,7 @@ export default function NewCustomerPage() {
         title: "Pelanggan ditambahkan!",
         description: `${values.fullName} telah berhasil ditambahkan.`,
       });
-      router.push("/dashboard/customers");
+      router.push("/dashboard/pelanggan");
 
     } catch (error) {
       console.error("Error adding customer: ", error);
@@ -93,7 +93,7 @@ export default function NewCustomerPage() {
     <>
       <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <Link href="/dashboard/customers">
+          <Link href="/dashboard/pelanggan">
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back</span>
           </Link>
@@ -166,7 +166,7 @@ export default function NewCustomerPage() {
               </div>
               <div className="flex justify-end gap-2">
                   <Button variant="outline" type="button" asChild>
-                      <Link href="/dashboard/customers">Batal</Link>
+                      <Link href="/dashboard/pelanggan">Batal</Link>
                   </Button>
                   <Button type="submit" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Pelanggan"}
