@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ArrowLeft } from "lucide-react";
 import { collection, serverTimestamp } from "firebase/firestore";
+import React from 'react';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,13 +29,14 @@ const customerSchema = z.object({
   nik: z.string().min(16, "NIK harus 16 digit").max(16, "NIK harus 16 digit"),
   fullName: z.string().min(2, "Nama lengkap harus diisi"),
   address: z.string().min(10, "Alamat harus diisi"),
-  // We'll handle file upload separately
+  ktpPhotoUrl: z.string().optional(),
 });
 
 export default function NewCustomerPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
 
   const form = useForm<z.infer<typeof customerSchema>>({
     resolver: zodResolver(customerSchema),
@@ -42,8 +44,22 @@ export default function NewCustomerPage() {
       nik: "",
       fullName: "",
       address: "",
+      ktpPhotoUrl: "",
     },
   });
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        form.setValue('ktpPhotoUrl', dataUrl);
+        setPhotoPreview(dataUrl);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   async function onSubmit(values: z.infer<typeof customerSchema>) {
     if (!firestore) return;
@@ -141,13 +157,20 @@ export default function NewCustomerPage() {
               />
               <div className="grid gap-3">
                 <Label htmlFor="picture">Foto KTP</Label>
-                <Input id="picture" type="file" />
+                <Input id="picture" type="file" accept="image/*" onChange={handlePhotoChange} />
+                {photoPreview && (
+                    <div className="relative mt-4 aspect-video w-full max-w-sm overflow-hidden rounded-lg border">
+                        <img src={photoPreview} alt="Pratinjau KTP" className="object-contain w-full h-full" />
+                    </div>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                   <Button variant="outline" type="button" asChild>
                       <Link href="/dashboard/customers">Batal</Link>
                   </Button>
-                  <Button type="submit">Simpan Pelanggan</Button>
+                  <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Pelanggan"}
+                  </Button>
               </div>
             </form>
           </Form>

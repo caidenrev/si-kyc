@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { ArrowLeft, FileDown, MoreVertical, User } from "lucide-react";
-import React, { useMemo } from 'react';
+import React from 'react';
 import { collection, query, where, doc } from 'firebase/firestore';
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 
 const PrintButton = () => (
     <Button onClick={() => window.print()}>
@@ -114,7 +115,7 @@ export default function CustomerDetailPage() {
                 </CardTitle>
                 <CardDescription>NIK: {customer.nik}</CardDescription>
               </div>
-              <div className="ml-auto flex items-center gap-1">
+              <div className="ml-auto flex items-center gap-1 print-hidden">
                 <Button size="sm" variant="outline" className="h-8 gap-1">
                   <MoreVertical className="h-3.5 w-3.5" />
                   <span className="lg:sr-only xl:not-sr-only xl:whitespace-nowrap">
@@ -137,6 +138,22 @@ export default function CustomerDetailPage() {
                         </div>
                     </dl>
                 </div>
+                {customer.ktpPhotoUrl && (
+                  <>
+                    <Separator className="my-6" />
+                    <div className="grid gap-3">
+                      <div className="font-semibold">Dokumen KTP</div>
+                      <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border">
+                         <Image
+                          src={customer.ktpPhotoUrl}
+                          alt="Foto KTP Pelanggan"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
             </CardContent>
           </Card>
           <Card className="shadow-lg shadow-primary/5 print-shadow-none">
@@ -196,5 +213,3 @@ export default function CustomerDetailPage() {
     </div>
   );
 }
-
-    

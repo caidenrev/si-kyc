@@ -7,6 +7,7 @@ export type Customer = {
   address: string;
   avatarUrl?: string;
   joinDate?: Timestamp; // Made optional for optimistic updates
+  ktpPhotoUrl?: string;
 };
 
 export type Transaction = {

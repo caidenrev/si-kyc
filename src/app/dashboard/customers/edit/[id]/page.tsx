@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ArrowLeft } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -29,6 +30,7 @@ const customerSchema = z.object({
   nik: z.string().min(16, "NIK harus 16 digit").max(16, "NIK harus 16 digit"),
   fullName: z.string().min(2, "Nama lengkap harus diisi"),
   address: z.string().min(10, "Alamat harus diisi"),
+  ktpPhotoUrl: z.string().optional(),
 });
 
 function EditCustomerFormSkeleton() {
@@ -46,6 +48,11 @@ function EditCustomerFormSkeleton() {
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-24 w-full" />
             </div>
+             <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-full" />
+                 <Skeleton className="h-48 w-full" />
+            </div>
             <div className="flex justify-end gap-2">
                 <Skeleton className="h-10 w-20" />
                 <Skeleton className="h-10 w-32" />
@@ -60,6 +67,7 @@ export default function EditCustomerPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { toast } = useToast();
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const customerId = id;
 
@@ -72,6 +80,7 @@ export default function EditCustomerPage() {
       nik: customer?.nik || "",
       fullName: customer?.fullName || "",
       address: customer?.address || "",
+      ktpPhotoUrl: customer?.ktpPhotoUrl || "",
     },
   });
 
@@ -81,9 +90,26 @@ export default function EditCustomerPage() {
         nik: customer.nik,
         fullName: customer.fullName,
         address: customer.address,
+        ktpPhotoUrl: customer.ktpPhotoUrl,
       });
+      if(customer.ktpPhotoUrl) {
+          setPhotoPreview(customer.ktpPhotoUrl);
+      }
     }
   }, [customer, form]);
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        form.setValue('ktpPhotoUrl', dataUrl);
+        setPhotoPreview(dataUrl);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   async function onSubmit(values: z.infer<typeof customerSchema>) {
     if (!customerRef) return;
@@ -175,6 +201,15 @@ export default function EditCustomerPage() {
                     </FormItem>
                   )}
                 />
+                 <div className="grid gap-3">
+                    <Label htmlFor="picture">Foto KTP</Label>
+                    <Input id="picture" type="file" accept="image/*" onChange={handlePhotoChange} />
+                    {photoPreview && (
+                        <div className="relative mt-4 aspect-video w-full max-w-sm overflow-hidden rounded-lg border">
+                            <img src={photoPreview} alt="Pratinjau KTP" className="object-contain w-full h-full" />
+                        </div>
+                    )}
+                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" type="button" asChild>
                     <Link href="/dashboard/customers">Batal</Link>
