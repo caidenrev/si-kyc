@@ -1,10 +1,10 @@
+
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { PlusCircle, Search, MoreHorizontal, User } from "lucide-react";
-import { collection, deleteDoc, doc } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -140,8 +139,12 @@ export default function CustomersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild><Link href={`/dashboard/customers/${customer.id}`}>Lihat Detail</Link></DropdownMenuItem>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/dashboard/customers/${customer.id}`}>Lihat Detail</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/dashboard/customers/edit/${customer.id}`}>Edit</Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(customer.id, customer.fullName)}>Hapus</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
