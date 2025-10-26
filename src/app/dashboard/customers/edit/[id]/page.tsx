@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ArrowLeft } from "lucide-react";
-import { doc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import React, { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useFirestore, useDoc, updateDocumentNonBlocking, useMemoFirebase } from "@/firebase";
+import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -68,14 +68,17 @@ export default function EditCustomerPage() {
 
   const form = useForm<z.infer<typeof customerSchema>>({
     resolver: zodResolver(customerSchema),
-    defaultValues: {
-      nik: "",
-      fullName: "",
-      address: "",
+    // Initialize with customer data if available, otherwise use empty strings.
+    // This prevents the "uncontrolled to controlled" error.
+    values: {
+      nik: customer?.nik || "",
+      fullName: customer?.fullName || "",
+      address: customer?.address || "",
     },
   });
 
   useEffect(() => {
+    // Reset the form when customer data is loaded or changed.
     if (customer) {
       form.reset({
         nik: customer.nik,
@@ -89,7 +92,7 @@ export default function EditCustomerPage() {
     if (!customerRef) return;
 
     try {
-      updateDocumentNonBlocking(customerRef, values);
+      await updateDoc(customerRef, values);
       toast({
         title: "Pelanggan diperbarui!",
         description: `Data ${values.fullName} telah berhasil diperbarui.`,
