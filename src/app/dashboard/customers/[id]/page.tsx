@@ -1,7 +1,9 @@
+
 'use client'
 
 import Link from "next/link";
 import Image from "next/image";
+import { useParams } from "next/navigation";
 import { ArrowLeft, FileDown, MoreVertical, User } from "lucide-react";
 import React, { useMemo } from 'react';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -33,18 +35,20 @@ const PrintButton = () => (
     </Button>
 );
 
-export default function CustomerDetailPage({ params }: { params: { id: string } }) {
+export default function CustomerDetailPage() {
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const [formattedJoinDate, setFormattedJoinDate] = React.useState('');
   const [clientTransactions, setClientTransactions] = React.useState<any[]>([]);
   const firestore = useFirestore();
 
-  const customerRef = useMemoFirebase(() => firestore ? doc(firestore, 'customers', params.id) : null, [firestore, params.id]);
+  const customerRef = useMemoFirebase(() => firestore && id ? doc(firestore, 'customers', id) : null, [firestore, id]);
   const { data: customer, isLoading: isCustomerLoading } = useDoc(customerRef);
   
   const transactionsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'transactions'), where('customerId', '==', params.id));
-  }, [firestore, params.id]);
+    if (!firestore || !id) return null;
+    return query(collection(firestore, 'transactions'), where('customerId', '==', id));
+  }, [firestore, id]);
 
   const { data: transactions, isLoading: areTransactionsLoading } = useCollection(transactionsQuery);
 
@@ -192,3 +196,5 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     </div>
   );
 }
+
+    
