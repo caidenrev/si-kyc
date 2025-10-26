@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -115,7 +116,7 @@ export default function NewCustomerPage() {
                   <FormItem>
                     <FormLabel>Nama Lengkap</FormLabel>
                     <FormControl>
-                      <Input placeholder="Contoh: Budi Santoso" {...field} />
+                      <Input placeholder="Contoh: Putri Amalia" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

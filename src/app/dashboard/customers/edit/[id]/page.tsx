@@ -58,18 +58,16 @@ export default function EditCustomerPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const params = useParams();
-  const { id } = params;
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { toast } = useToast();
 
-  const customerId = Array.isArray(id) ? id[0] : id;
+  const customerId = id;
 
   const customerRef = useMemoFirebase(() => (firestore && customerId ? doc(firestore, 'customers', customerId) : null), [firestore, customerId]);
   const { data: customer, isLoading } = useDoc(customerRef);
 
   const form = useForm<z.infer<typeof customerSchema>>({
     resolver: zodResolver(customerSchema),
-    // Initialize with customer data if available, otherwise use empty strings.
-    // This prevents the "uncontrolled to controlled" error.
     values: {
       nik: customer?.nik || "",
       fullName: customer?.fullName || "",
@@ -78,7 +76,6 @@ export default function EditCustomerPage() {
   });
 
   useEffect(() => {
-    // Reset the form when customer data is loaded or changed.
     if (customer) {
       form.reset({
         nik: customer.nik,
@@ -155,7 +152,7 @@ export default function EditCustomerPage() {
                     <FormItem>
                       <FormLabel>Nama Lengkap</FormLabel>
                       <FormControl>
-                        <Input placeholder="Contoh: Budi Santoso" {...field} />
+                        <Input placeholder="Contoh: Putri Amalia" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
