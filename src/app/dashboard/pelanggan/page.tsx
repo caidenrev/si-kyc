@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { PlusCircle, Search, MoreHorizontal, User } from "lucide-react";
-import { collection, doc, deleteDoc } from "firebase/firestore";
+import { collection, doc, deleteDoc, query, where, getDocs, writeBatch } from "firebase/firestore";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -44,22 +44,38 @@ export default function CustomersPage() {
   const { toast } = useToast();
 
   const handleDelete = async (customerId: string, customerName: string) => {
-    if(!firestore) return;
-    if (confirm(`Apakah Anda yakin ingin menghapus pelanggan ${customerName}?`)) {
-      const docRef = doc(firestore, 'customers', customerId);
-       try {
-        await deleteDoc(docRef);
-        toast({
-            title: "Pelanggan Dihapus",
-            description: `${customerName} telah berhasil dihapus.`,
+    if (!firestore) return;
+    if (confirm(`Apakah Anda yakin ingin menghapus pelanggan ${customerName} beserta seluruh riwayat transaksinya? Tindakan ini tidak dapat dibatalkan.`)) {
+      try {
+        // Create a batch
+        const batch = writeBatch(firestore);
+
+        // 1. Find and delete all transactions for the customer
+        const transactionsQuery = query(collection(firestore, 'transactions'), where('customerId', '==', customerId));
+        const transactionsSnapshot = await getDocs(transactionsQuery);
+        transactionsSnapshot.forEach(doc => {
+          batch.delete(doc.ref);
         });
+
+        // 2. Delete the customer document
+        const customerDocRef = doc(firestore, 'customers', customerId);
+        batch.delete(customerDocRef);
+
+        // 3. Commit the batch
+        await batch.commit();
+
+        toast({
+          title: "Pelanggan Dihapus",
+          description: `${customerName} dan semua transaksinya telah berhasil dihapus.`,
+        });
+
       } catch (error) {
-          console.error("Error deleting customer: ", error);
-          toast({
-              variant: "destructive",
-              title: "Gagal Menghapus",
-              description: "Terjadi kesalahan saat menghapus data pelanggan.",
-          });
+        console.error("Error deleting customer and their transactions: ", error);
+        toast({
+          variant: "destructive",
+          title: "Gagal Menghapus",
+          description: "Terjadi kesalahan saat menghapus data pelanggan dan transaksinya.",
+        });
       }
     }
   };
