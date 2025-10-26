@@ -76,6 +76,7 @@ export default function NewTransactionPage() {
       customerId: "",
       type: "Deposit",
       currency: "IDR",
+      amount: 0,
       source: "",
       destination: ""
     },
