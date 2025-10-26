@@ -1,77 +1,96 @@
 /**
- * @file Firebase Security Rules for Customer and Transaction data.
+ * @fileoverview Firestore Security Rules for the application.
  *
  * Core Philosophy:
- * This ruleset enforces a strict ownership model for customer data and transactions.
- * Customers can only read and write their own data. Transactions are not scoped to any specific customer but must have a valid customerId.
+ * This ruleset enforces a strict ownership model for both `customers` and `transactions`.
+ * Only authenticated users are allowed to create, read, update, or delete documents.
+ * A user can only manage customers they "own," which, in this context, means customers where the `id` field matches their `auth.uid`.
+ * Similarly, transactions can be created, read, updated, or deleted by any authenticated user, there is no concept of ownership for the transaction.
  *
  * Data Structure:
- * - `/customers/{customerId}`: Stores customer KYC data, with 'customerId' as the document ID.
- * - `/transactions/{transactionId}`: Stores transaction data. Each transaction includes a 'customerId' field referencing the associated customer.
+ * The Firestore database consists of two top-level collections: `customers` and `transactions`.
+ *   - `/customers/{customerId}`: Stores customer data, where `{customerId}` is the unique customer ID and should match the authenticated user's UID.
+ *   - `/transactions/{transactionId}`: Stores transaction data, where `{transactionId}` is the unique transaction ID.
  *
  * Key Security Decisions:
- * - Customers can only create their profile (`/customers/{customerId}`) if the authenticated user's ID matches the `customerId`.
- * - Customers can update and delete their own profiles, provided the document exists.
- * - Transactions are secured via the `customerId` field, which links each transaction to a specific customer.
- * - The `list` operation is enabled on both collections but not without guards. Listing the customers or transactions is only granted with the user's ID.
- *
- * Denormalization for Authorization:
- * The rules leverage the `customerId` field within the `/transactions/{transactionId}` document to establish a link between the transaction and the customer. This enables authorization checks without requiring additional `get()` operations.
+ *   - No public listing of customers or transactions is allowed.
+ *   - Customer creation is restricted to authenticated users, and the customer's `id` field must match the authenticated user's `uid`.
+ *   - Customer updates and deletes are restricted to the user who "owns" the customer (i.e., their `auth.uid` matches the `customerId`).
+ *   - Transactions can be created, read, updated, or deleted by any authenticated user.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows customers to manage their KYC data.
-     * @path /customers/{customerId}
-     * @allow (create) User abc can create their customer profile if authenticated as abc.
-     * @deny (create) User xyz cannot create a profile for abc.
-     * @allow (get, update, delete, list) User abc can perform these operations on their profile if authenticated as abc.
-     * @deny (get, update, delete) User xyz cannot perform these operations on abc's profile.
-     * @principle Enforces document ownership for writes and reads, validates path consistency.
+     * @description Grants access to customer documents based on ownership.
+     * @path /databases/{database}/documents/customers/{customerId}
+     * @allow (create) - An authenticated user with UID 'user123' can create a new customer document at /customers/user123 if the document's 'id' field also contains 'user123'.
+     * @allow (get) - An authenticated user with UID 'user123' can get the customer document at /customers/user123.
+     * @allow (list) - An authenticated user with UID 'user123' can list their customers /customers/user123.
+     * @allow (update) - An authenticated user with UID 'user123' can update the customer document at /customers/user123 if the document exists.
+     * @allow (delete) - An authenticated user with UID 'user123' can delete the customer document at /customers/user123 if the document exists.
+     * @deny (create) - An unauthenticated user cannot create a customer document.
+     * @deny (create) - An authenticated user with UID 'user123' cannot create a customer document at /customers/user456.
+     * @deny (update) - An authenticated user with UID 'user123' cannot update the customer document at /customers/user456.
+     * @deny (delete) - An authenticated user with UID 'user123' cannot delete the customer document at /customers/user456.
+     * @principle Enforces document ownership for writes and restricts access to a user's own customer data.
      */
     match /customers/{customerId} {
+      // Helper function to check if the user is signed in.
       function isSignedIn() {
         return request.auth != null;
       }
 
+      // Helper function to check if the user is the owner of the customer document.
       function isOwner(customerId) {
         return request.auth.uid == customerId;
       }
 
+      // Helper function to check if the user is the owner of the customer document and if the document exists.
       function isExistingOwner(customerId) {
-          return isOwner(customerId) && resource != null;
+        return isOwner(customerId) && resource != null;
       }
 
-      allow get: if true;
-      allow list: if true;
+      // Allow anyone to read
+      allow get: if isSignedIn() && isOwner(customerId);
+      allow list: if isSignedIn() && isOwner(customerId);
 
-      allow create: if isSignedIn() && isOwner(customerId) && request.resource.data.id == customerId;
-      allow update: if isExistingOwner(customerId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(customerId);
+      // Only allow the owner to create a customer document, and enforce that the document's id matches the user's UID.
+      allow create: if isSignedIn()
+                   && isOwner(customerId)
+                   && request.resource.data.id == request.auth.uid;
+
+      // Only allow the owner to update a customer document, and enforce immutability of the id field.
+      allow update: if isSignedIn()
+                   && isExistingOwner(customerId)
+                   && request.resource.data.id == resource.data.id;
+
+      // Only allow the owner to delete a customer document.
+      allow delete: if isSignedIn() && isExistingOwner(customerId);
     }
 
     /**
-     * @description Allows transaction management for all authenticated users.
-     * @path /transactions/{transactionId}
-     * @allow (create) Any authenticated user can create a transaction with a valid customerId.
-     * @deny (create) Creation is denied for unauthenticated users.
-     * @allow (get, update, delete, list) Any authenticated user can perform these operations on transactions if the document exists.
-     * @deny (get, update, delete) Operations are denied for non-existent documents.
-     * @principle Grants access to all authenticated users, requiring a valid customerId on create.
+     * @description Grants access to transaction documents for authenticated users.
+     * @path /databases/{database}/documents/transactions/{transactionId}
+     * @allow (create) - An authenticated user can create a new transaction document.
+     * @allow (get) - An authenticated user can get any transaction document.
+     * @allow (list) - An authenticated user can list any transaction document.
+     * @allow (update) - An authenticated user can update any transaction document.
+     * @allow (delete) - An authenticated user can delete any transaction document.
+     * @deny (create) - An unauthenticated user cannot create a transaction document.
+     * @principle Allows any authenticated user to read and write transaction data.
      */
     match /transactions/{transactionId} {
+      // Helper function to check if the user is signed in.
       function isSignedIn() {
         return request.auth != null;
       }
 
-      allow get: if true;
-      allow list: if true;
-
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if resource != null;
-      allow delete: if resource != null;
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
   }
 }
