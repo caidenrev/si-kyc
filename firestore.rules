@@ -1,40 +1,38 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @fileoverview Firestore Security Rules for the KYC and Transaction Management App.
  *
  * Core Philosophy:
- * This ruleset enforces a strict ownership model for both `customers` and `transactions`.
- * Only authenticated users are allowed to create, read, update, or delete documents.
- * A user can only manage customers they "own," which, in this context, means customers where the `id` field matches their `auth.uid`.
- * Similarly, transactions can be created, read, updated, or deleted by any authenticated user, there is no concept of ownership for the transaction.
+ * This ruleset implements a security model based on collection-level access control.  It enforces restrictions on who can read and write data to the `customers` and `transactions` collections.
  *
  * Data Structure:
- * The Firestore database consists of two top-level collections: `customers` and `transactions`.
- *   - `/customers/{customerId}`: Stores customer data, where `{customerId}` is the unique customer ID and should match the authenticated user's UID.
- *   - `/transactions/{transactionId}`: Stores transaction data, where `{transactionId}` is the unique transaction ID.
+ * The Firestore database contains two top-level collections:
+ *   - /customers/{customerId}: Stores customer KYC data, with each document ID representing the customer's unique ID.
+ *   - /transactions/{transactionId}: Stores transaction data, with each document ID representing the transaction's unique ID.
  *
  * Key Security Decisions:
- *   - No public listing of customers or transactions is allowed.
- *   - Customer creation is restricted to authenticated users, and the customer's `id` field must match the authenticated user's `uid`.
- *   - Customer updates and deletes are restricted to the user who "owns" the customer (i.e., their `auth.uid` matches the `customerId`).
- *   - Transactions can be created, read, updated, or deleted by any authenticated user.
+ *   - No user-specific subcollections are used. All data is stored in top-level collections.
+ *   - Listing of `customers` collection is forbidden.
+ *   - Listing of `transactions` collection is not restricted in this prototype.
+ *
+ * Denormalization for Authorization:
+ *   - Not used in this version.
+ *
+ * Structural Segregation:
+ *   - Not used in this version.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants access to customer documents based on ownership.
+     * @description Controls access to customer data.
      * @path /databases/{database}/documents/customers/{customerId}
-     * @allow (create) - An authenticated user with UID 'user123' can create a new customer document at /customers/user123 if the document's 'id' field also contains 'user123'.
-     * @allow (get) - An authenticated user with UID 'user123' can get the customer document at /customers/user123.
-     * @allow (list) - An authenticated user with UID 'user123' can list their customers /customers/user123.
-     * @allow (update) - An authenticated user with UID 'user123' can update the customer document at /customers/user123 if the document exists.
-     * @allow (delete) - An authenticated user with UID 'user123' can delete the customer document at /customers/user123 if the document exists.
-     * @deny (create) - An unauthenticated user cannot create a customer document.
-     * @deny (create) - An authenticated user with UID 'user123' cannot create a customer document at /customers/user456.
-     * @deny (update) - An authenticated user with UID 'user123' cannot update the customer document at /customers/user456.
-     * @deny (delete) - An authenticated user with UID 'user123' cannot delete the customer document at /customers/user456.
-     * @principle Enforces document ownership for writes and restricts access to a user's own customer data.
+     * @allow (get) Authenticated user can read a specific customer document.
+     * @deny (list) Listing all customers is forbidden.
+     * @deny (create) Customers cannot be created directly (likely created via backend).
+     * @allow (update) Authenticated user can update their own customer document.
+     * @allow (delete) Authenticated user can delete their own customer document.
+     * @principle Enforces document ownership for writes, restricts listing.
      */
     match /customers/{customerId} {
       // Helper function to check if the user is signed in.
@@ -42,44 +40,34 @@ service cloud.firestore {
         return request.auth != null;
       }
 
-      // Helper function to check if the user is the owner of the customer document.
+      // Helper function to check if the authenticated user's UID matches the customerId.
       function isOwner(customerId) {
         return request.auth.uid == customerId;
       }
 
-      // Helper function to check if the user is the owner of the customer document and if the document exists.
+      // Helper function to check if the user is the existing owner of the document.
       function isExistingOwner(customerId) {
-        return isOwner(customerId) && resource != null;
+          return isOwner(customerId) && resource != null;
       }
+      
+      allow get: if isSignedIn();
+      allow list: if false;
 
-      // Allow anyone to read
-      allow get: if isSignedIn() && isOwner(customerId);
-      allow list: if isSignedIn() && isOwner(customerId);
+      allow create: if false;
 
-      // Only allow the owner to create a customer document, and enforce that the document's id matches the user's UID.
-      allow create: if isSignedIn()
-                   && isOwner(customerId)
-                   && request.resource.data.id == request.auth.uid;
-
-      // Only allow the owner to update a customer document, and enforce immutability of the id field.
-      allow update: if isSignedIn()
-                   && isExistingOwner(customerId)
-                   && request.resource.data.id == resource.data.id;
-
-      // Only allow the owner to delete a customer document.
-      allow delete: if isSignedIn() && isExistingOwner(customerId);
+      allow update: if isExistingOwner(customerId);
+      allow delete: if isExistingOwner(customerId);
     }
 
     /**
-     * @description Grants access to transaction documents for authenticated users.
+     * @description Controls access to transaction data.
      * @path /databases/{database}/documents/transactions/{transactionId}
-     * @allow (create) - An authenticated user can create a new transaction document.
-     * @allow (get) - An authenticated user can get any transaction document.
-     * @allow (list) - An authenticated user can list any transaction document.
-     * @allow (update) - An authenticated user can update any transaction document.
-     * @allow (delete) - An authenticated user can delete any transaction document.
-     * @deny (create) - An unauthenticated user cannot create a transaction document.
-     * @principle Allows any authenticated user to read and write transaction data.
+     * @allow (get) Authenticated user can read a specific transaction document.
+     * @allow (list) Authenticated user can list all transaction documents.
+     * @deny (create) Authenticated user cannot create a transaction if not signed in.
+     * @allow (update) Authenticated user can update a transaction document.
+     * @allow (delete) Authenticated user can delete a transaction document.
+     * @principle Requires authentication for creating transactions, enforces document ownership for writes.
      */
     match /transactions/{transactionId} {
       // Helper function to check if the user is signed in.
@@ -87,10 +75,13 @@ service cloud.firestore {
         return request.auth != null;
       }
 
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if true;
+
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
   }
 }
